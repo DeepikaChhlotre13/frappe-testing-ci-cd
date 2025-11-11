@@ -6,7 +6,7 @@ pipeline {
             steps {
                 sh '''
                 echo "Installing Frappe Bench..."
-                sudo apt update -y
+                sudo dnf update -y
                 sudo apt install -y python3-pip python3-venv nodejs npm redis-server mariadb-server xvfb libfontconfig wkhtmltopdf
                 pip install frappe-bench
                 bench --version
