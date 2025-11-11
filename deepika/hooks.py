@@ -1,4 +1,4 @@
-app_name = "deepika"
+app_name = 
 app_title = "Deepika"
 app_publisher = "deepika"
 app_description = "chekcing"
