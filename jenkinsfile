@@ -57,18 +57,23 @@
         }
 
         stage('Initialize Bench') {
-            steps {
-                sh '''
-                export PATH=$HOME/.local/bin:$PATH
-                if [ ! -d "$BENCH_DIR" ]; then
-                    echo "Creating new Frappe bench..."
-                    bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python python3
-                else
-                    echo "Bench already exists."
-                fi
-                '''
-            }
-        }
+    steps {
+        sh '''
+        # Use exact Python 3.11 path
+        PYTHON_PATH=$(which python3.11)
+
+        # Remove old bench if exists (optional, only if previous attempts failed)
+        if [ -d "$BENCH_DIR" ]; then
+            echo "Removing old bench folder..."
+            rm -rf "$BENCH_DIR"
+        fi
+
+        echo "Creating new Frappe bench with Python 3.11..."
+        bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python $PYTHON_PATH
+        '''
+    }
+}
+
 
         stage('Clone App from Git') {
             steps {
