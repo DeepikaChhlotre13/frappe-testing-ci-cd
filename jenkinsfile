@@ -1,35 +1,29 @@
 pipeline {
     agent any
 
-    environment {
-        FRAPPE_BRANCH = "version-14"
-        SITE_NAME = "site1.local"
-        APP_NAME = "deepika"
-        BENCH_DIR = "${env.WORKSPACE}/frappe-bench"
-    }
-
     stages {
-
-        stage('Checkout Repository') {
-            steps {
-                echo "Cloning repository..."
-                checkout scm
-            }
-        }
-
         stage('Setup Bench Environment') {
             steps {
                 sh '''
-                cd ${WORKSPACE}
-
-                # If bench folder doesn't exist, create it
-                if [ ! -d "${BENCH_DIR}" ]; then
-                    echo "Creating new frappe bench..."
-                    bench init frappe-bench --frappe-branch ${FRAPPE_BRANCH} --python python3
-                fi
-
-                cd ${BENCH_DIR}
+                echo "Installing Frappe Bench..."
+                sudo apt update -y
+                sudo apt install -y python3-pip python3-venv nodejs npm redis-server mariadb-server xvfb libfontconfig wkhtmltopdf
+                pip install frappe-bench
                 bench --version
+                '''
+            }
+        }
+
+        stage('Initialize Bench') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}
+                if [ ! -d "frappe-bench" ]; then
+                    echo "Creating new frappe bench..."
+                    bench init frappe-bench --frappe-branch version-14 --python python3
+                else
+                    echo "Bench already exists."
+                fi
                 '''
             }
         }
@@ -37,10 +31,8 @@ pipeline {
         stage('Copy App to Bench') {
             steps {
                 sh '''
-                echo "Copying frappe app to bench..."
-                cd ${BENCH_DIR}
-                rm -rf apps/${APP_NAME} || true
-                cp -r ${WORKSPACE}/${APP_NAME} apps/${APP_NAME}
+                cd ${WORKSPACE}/frappe-bench/apps
+                cp -r ${WORKSPACE}/your_app_name .
                 '''
             }
         }
@@ -48,16 +40,9 @@ pipeline {
         stage('Setup Site and Install App') {
             steps {
                 sh '''
-                cd ${BENCH_DIR}
-
-                # Create site if not exists
-                if ! bench --site ${SITE_NAME} version >/dev/null 2>&1; then
-                    echo "Creating new site..."
-                    bench new-site ${SITE_NAME} --mariadb-root-password root --admin-password admin --no-mariadb-socket
-                fi
-
-                # Install app on site
-                bench --site ${SITE_NAME} install-app ${APP_NAME} || true
+                cd ${WORKSPACE}/frappe-bench
+                bench new-site test.localhost --mariadb-root-password root --admin-password admin
+                bench --site test.localhost install-app your_app_name
                 '''
             }
         }
@@ -65,10 +50,9 @@ pipeline {
         stage('Build and Migrate') {
             steps {
                 sh '''
-                cd ${BENCH_DIR}
-                echo "Building assets and migrating..."
+                cd ${WORKSPACE}/frappe-bench
                 bench build
-                bench --site ${SITE_NAME} migrate
+                bench migrate
                 '''
             }
         }
@@ -76,8 +60,7 @@ pipeline {
         stage('Restart Bench') {
             steps {
                 sh '''
-                cd ${BENCH_DIR}
-                echo "Restarting bench..."
+                cd ${WORKSPACE}/frappe-bench
                 bench restart
                 '''
             }
@@ -86,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Frappe app deployed successfully!"
+            echo '✅ Build succeeded!'
         }
         failure {
-            echo "❌ Build failed! Check console logs for details."
+            echo '❌ Build failed! Check console logs for details.'
         }
     }
 }
