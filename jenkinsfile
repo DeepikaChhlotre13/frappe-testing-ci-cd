@@ -2,16 +2,32 @@ pipeline {
     agent any
 
     stages {
-        stage('Setup Bench Environment') {
-            steps {
-                sh '''
-                echo "Installing Frappe Bench..."
-                sudo dnf update -y
-                sudo apt install -y python3-pip python3-venv nodejs npm redis-server mariadb-server xvfb libfontconfig wkhtmltopdf
-                pip install frappe-bench
-                bench --version
-                '''
-            }
+    stage('Setup Bench Environment') {
+        steps {
+            sh '''
+            echo "Installing Frappe Bench..."
+            # Update system packages
+            sudo dnf update -y
+            
+            # Install dependencies (CentOS commands)
+            sudo dnf install -y python3-pip python3-venv nodejs npm redis mariadb-server xvfb libfontconfig wkhtmltopdf
+            
+            # Start necessary services
+            sudo systemctl enable mariadb
+            sudo systemctl start mariadb
+            sudo systemctl enable redis
+            sudo systemctl start redis
+
+            # Install frappe-bench
+            pip3 install frappe-bench
+
+            # Verify bench installation
+            bench --version
+            '''
+        }
+    }
+}
+
         }
 
         stage('Initialize Bench') {
