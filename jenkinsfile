@@ -1,13 +1,21 @@
-pipeline {
+ pipeline {
     agent any
 
     stages {
         stage('Setup Bench Environment') {
             steps {
                 sh '''
-                echo "Installing Frappe Bench..."
+                echo "Installing Frappe Bench dependencies..."
                 sudo dnf update -y
-                sudo dnf install -y python3-pip python3-venv nodejs npm redis mariadb-server xvfb libfontconfig wkhtmltopdf
+                sudo dnf install -y epel-release
+                sudo dnf install -y python3-pip python3-virtualenv nodejs npm redis mariadb-server xorg-x11-server-Xvfb fontconfig
+
+                # Install wkhtmltopdf manually (already downloaded or downloaded automatically)
+                if [ ! -f "${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm" ]; then
+                    wget -O ${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm
+                fi
+                sudo dnf localinstall -y ${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm
+                wkhtmltopdf --version
 
                 sudo systemctl enable mariadb
                 sudo systemctl start mariadb
