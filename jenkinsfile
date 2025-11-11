@@ -1,28 +1,54 @@
  pipeline {
     agent any
 
+    environment {
+        WORKSPACE_DIR = "${env.WORKSPACE}"
+        BENCH_DIR = "${env.WORKSPACE}/frappe-bench"
+        APP_GIT = "https://github.com/YourUsername/your_app_name.git" // Replace with your Git repo
+        APP_NAME = "your_app_name" // Replace with your app folder name
+        FRAPPE_BRANCH = "version-14"
+        SITE_NAME = "test.localhost"
+        DB_ROOT_PASSWORD = "root"
+        ADMIN_PASSWORD = "admin"
+    }
+
     stages {
-        stage('Setup Bench Environment') {
+
+        stage('Install System Dependencies') {
             steps {
                 sh '''
-                echo "Installing Frappe Bench dependencies..."
+                echo "Updating system and installing dependencies..."
                 sudo dnf update -y
                 sudo dnf install -y epel-release
-                sudo dnf install -y python3-pip python3-virtualenv nodejs npm redis mariadb-server xorg-x11-server-Xvfb fontconfig
+                sudo dnf install -y python3-pip python3-virtualenv nodejs npm redis mariadb-server xorg-x11-server-Xvfb fontconfig git wget
 
-                # Install wkhtmltopdf manually (already downloaded or downloaded automatically)
-                if [ ! -f "${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm" ]; then
-                    wget -O ${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm
+                sudo systemctl enable mariadb redis
+                sudo systemctl start mariadb redis
+                '''
+            }
+        }
+
+        stage('Install wkhtmltopdf') {
+            steps {
+                sh '''
+                WKHTML_VERSION="0.12.6.1-2"
+                WKHTML_RPM="${WORKSPACE_DIR}/wkhtmltox-${WKHTML_VERSION}.almalinux9.x86_64.rpm"
+
+                if [ ! -f "$WKHTML_RPM" ]; then
+                    echo "Downloading wkhtmltopdf..."
+                    wget -O "$WKHTML_RPM" "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTML_VERSION}/wkhtmltox-${WKHTML_VERSION}.almalinux9.x86_64.rpm"
                 fi
-                sudo dnf localinstall -y ${WORKSPACE}/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm
+
+                sudo dnf localinstall -y "$WKHTML_RPM"
                 wkhtmltopdf --version
+                '''
+            }
+        }
 
-                sudo systemctl enable mariadb
-                sudo systemctl start mariadb
-                sudo systemctl enable redis
-                sudo systemctl start redis
-
-                pip3 install frappe-bench
+        stage('Install Bench CLI') {
+            steps {
+                sh '''
+                pip3 install --upgrade frappe-bench
                 bench --version
                 '''
             }
@@ -31,10 +57,9 @@
         stage('Initialize Bench') {
             steps {
                 sh '''
-                cd ${WORKSPACE}
-                if [ ! -d "frappe-bench" ]; then
-                    echo "Creating new frappe bench..."
-                    bench init frappe-bench --frappe-branch version-14 --python python3
+                if [ ! -d "$BENCH_DIR" ]; then
+                    echo "Creating new Frappe bench..."
+                    bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python python3
                 else
                     echo "Bench already exists."
                 fi
@@ -42,21 +67,40 @@
             }
         }
 
-        stage('Copy App to Bench') {
+        stage('Clone App from Git') {
             steps {
                 sh '''
-                cd ${WORKSPACE}/frappe-bench/apps
-                cp -r ${WORKSPACE}/your_app_name .
+                cd $BENCH_DIR/apps
+                if [ ! -d "$APP_NAME" ]; then
+                    echo "Cloning app from Git..."
+                    git clone $APP_GIT
+                else
+                    echo "App already exists."
+                    cd $APP_NAME && git pull
+                fi
                 '''
             }
         }
 
-        stage('Setup Site and Install App') {
+        stage('Setup Site') {
             steps {
                 sh '''
-                cd ${WORKSPACE}/frappe-bench
-                bench new-site test.localhost --mariadb-root-password root --admin-password admin
-                bench --site test.localhost install-app your_app_name
+                cd $BENCH_DIR
+                if [ ! -d "sites/$SITE_NAME" ]; then
+                    echo "Creating new site..."
+                    bench new-site $SITE_NAME --mariadb-root-password $DB_ROOT_PASSWORD --admin-password $ADMIN_PASSWORD
+                else
+                    echo "Site already exists."
+                fi
+                '''
+            }
+        }
+
+        stage('Install App on Site') {
+            steps {
+                sh '''
+                cd $BENCH_DIR
+                bench --site $SITE_NAME install-app $APP_NAME
                 '''
             }
         }
@@ -64,9 +108,9 @@
         stage('Build and Migrate') {
             steps {
                 sh '''
-                cd ${WORKSPACE}/frappe-bench
+                cd $BENCH_DIR
                 bench build
-                bench migrate
+                bench --site $SITE_NAME migrate
                 '''
             }
         }
@@ -74,19 +118,20 @@
         stage('Restart Bench') {
             steps {
                 sh '''
-                cd ${WORKSPACE}/frappe-bench
+                cd $BENCH_DIR
                 bench restart
                 '''
             }
         }
+
     }
 
     post {
         success {
-            echo '✅ Build succeeded!'
+            echo '✅ CI/CD pipeline completed successfully!'
         }
         failure {
-            echo '❌ Build failed! Check console logs for details.'
+            echo '❌ CI/CD pipeline failed. Check console output for details.'
         }
     }
 }
