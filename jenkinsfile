@@ -2,61 +2,39 @@ pipeline {
     agent any
 
     environment {
-        WORKSPACE_DIR = "${env.WORKSPACE}"
-        BENCH_DIR = "${env.WORKSPACE}/frappe-bench"
-        FRAPPE_BRANCH = "version-14"
-        SITE_NAME = "test.localhost"
-        DB_ROOT_PASSWORD = "root"
-        ADMIN_PASSWORD = "admin"
+        BENCH_DIR = "/home/deepika/frappe-bench"  // Path to your existing bench
+        SITE_NAME = "test.localhost"              // Your existing site
         PATH = "$HOME/.local/bin:$PATH"
     }
 
     stages {
 
-        stage('Build') {
+        stage('Pull Latest Code') {
             steps {
                 sh '''
-                echo "🔧 Starting Frappe Bench Build..."
-                PYTHON_PATH=$(which python3.11)
-
-                # Clean old bench
-                if [ -d "$BENCH_DIR" ]; then
-                    echo "Removing old bench folder..."
-                    rm -rf "$BENCH_DIR"
-                fi
-
-                export PIP_DEFAULT_TIMEOUT=120
-                pip config set global.timeout 120 || true
-                pip config set global.index-url https://pypi.org/simple || true
-
-                echo "Creating new Frappe bench..."
-                bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python $PYTHON_PATH
+                echo "🔄 Pulling latest changes from Git..."
+                cd $BENCH_DIR/apps/your_app_name
+                git pull origin main || git pull origin master
                 '''
             }
         }
 
-        stage('Test') {
+        stage('Build & Migrate') {
             steps {
                 sh '''
-                echo "🧪 Running build and migration..."
+                echo "⚙️ Building and migrating..."
                 export PATH=$HOME/.local/bin:$PATH
                 cd $BENCH_DIR
-
-                if [ ! -d "sites/$SITE_NAME" ]; then
-                    echo "Creating new site..."
-                    bench new-site $SITE_NAME --mariadb-root-password $DB_ROOT_PASSWORD --admin-password $ADMIN_PASSWORD --non-interactive
-                fi
-
                 bench build
                 bench --site $SITE_NAME migrate
                 '''
             }
         }
 
-        stage('Deploy') {
+        stage('Restart Bench') {
             steps {
                 sh '''
-                echo "🚀 Deploying Frappe instance..."
+                echo "🚀 Restarting bench..."
                 export PATH=$HOME/.local/bin:$PATH
                 cd $BENCH_DIR
                 bench restart
@@ -67,10 +45,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ CI/CD pipeline completed successfully!'
+            echo '✅ Deployment successful!'
         }
         failure {
-            echo '❌ CI/CD pipeline failed. Check console output for details.'
+            echo '❌ Deployment failed! Check Jenkins logs.'
         }
     }
 }
