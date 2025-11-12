@@ -1,146 +1,68 @@
- pipeline {
+pipeline {
     agent any
 
     environment {
         WORKSPACE_DIR = "${env.WORKSPACE}"
         BENCH_DIR = "${env.WORKSPACE}/frappe-bench"
-        APP_GIT = "https://github.com/YourUsername/your_app_name.git" // Replace with your Git repo
-        APP_NAME = "your_app_name" // Replace with your app folder name
         FRAPPE_BRANCH = "version-14"
         SITE_NAME = "test.localhost"
         DB_ROOT_PASSWORD = "root"
         ADMIN_PASSWORD = "admin"
-        PATH = "$HOME/.local/bin:$PATH" // Ensure bench CLI is in PATH
+        PATH = "$HOME/.local/bin:$PATH"
     }
 
     stages {
 
-        stage('Install System Dependencies') {
+        stage('Build') {
             steps {
                 sh '''
-                echo "Updating system and installing dependencies..."
-                sudo dnf update -y
-                sudo dnf install -y epel-release
-                sudo dnf install -y python3-pip python3-virtualenv nodejs npm redis mariadb-server xorg-x11-server-Xvfb fontconfig git wget
+                echo "🔧 Starting Frappe Bench Build..."
+                PYTHON_PATH=$(which python3.11)
 
-                sudo systemctl enable mariadb redis
-                sudo systemctl start mariadb redis
-                '''
-            }
-        }
-
-        stage('Install wkhtmltopdf') {
-            steps {
-                sh '''
-                WKHTML_VERSION="0.12.6.1-2"
-                WKHTML_RPM="${WORKSPACE_DIR}/wkhtmltox-${WKHTML_VERSION}.almalinux9.x86_64.rpm"
-
-                if [ ! -f "$WKHTML_RPM" ]; then
-                    echo "Downloading wkhtmltopdf..."
-                    wget -O "$WKHTML_RPM" "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTML_VERSION}/wkhtmltox-${WKHTML_VERSION}.almalinux9.x86_64.rpm"
+                # Clean old bench
+                if [ -d "$BENCH_DIR" ]; then
+                    echo "Removing old bench folder..."
+                    rm -rf "$BENCH_DIR"
                 fi
 
-                sudo dnf localinstall -y "$WKHTML_RPM"
-                wkhtmltopdf --version
+                export PIP_DEFAULT_TIMEOUT=120
+                pip config set global.timeout 120 || true
+                pip config set global.index-url https://pypi.org/simple || true
+
+                echo "Creating new Frappe bench..."
+                bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python $PYTHON_PATH
                 '''
             }
         }
 
-        stage('Install Bench CLI') {
+        stage('Test') {
             steps {
                 sh '''
-                pip3 install --upgrade --user frappe-bench
-                export PATH=$HOME/.local/bin:$PATH
-                bench --version
-                '''
-            }
-        }
-
-       stage('Initialize Bench') {
-  steps {
-    sh '''
-    set -e
-    PYTHON_PATH=$(which python3.11)
-
-    if [ -d "$BENCH_DIR" ]; then
-        echo "Removing old bench folder..."
-        rm -rf "$BENCH_DIR"
-    fi
-
-    echo "Setting pip timeout and index before initializing bench"
-    export PIP_DEFAULT_TIMEOUT=120
-    pip config set global.timeout 120 || true
-    pip config set global.index-url https://pypi.org/simple || true
-
-    echo "Creating new Frappe bench..."
-    bench init "$BENCH_DIR" --frappe-branch $FRAPPE_BRANCH --python $PYTHON_PATH
-    '''
-  }
-}
-
-
-
-        stage('Clone App from Git') {
-            steps {
-                sh '''
-                cd $BENCH_DIR/apps
-                if [ ! -d "$APP_NAME" ]; then
-                    echo "Cloning app from Git..."
-                    git clone $APP_GIT
-                else
-                    echo "App already exists, pulling latest..."
-                    cd $APP_NAME && git pull
-                fi
-                '''
-            }
-        }
-
-        stage('Setup Site') {
-            steps {
-                sh '''
+                echo "🧪 Running build and migration..."
                 export PATH=$HOME/.local/bin:$PATH
                 cd $BENCH_DIR
+
                 if [ ! -d "sites/$SITE_NAME" ]; then
                     echo "Creating new site..."
                     bench new-site $SITE_NAME --mariadb-root-password $DB_ROOT_PASSWORD --admin-password $ADMIN_PASSWORD --non-interactive
-                else
-                    echo "Site already exists."
                 fi
-                '''
-            }
-        }
 
-        stage('Install App on Site') {
-            steps {
-                sh '''
-                export PATH=$HOME/.local/bin:$PATH
-                cd $BENCH_DIR
-                bench --site $SITE_NAME install-app $APP_NAME
-                '''
-            }
-        }
-
-        stage('Build and Migrate') {
-            steps {
-                sh '''
-                export PATH=$HOME/.local/bin:$PATH
-                cd $BENCH_DIR
                 bench build
                 bench --site $SITE_NAME migrate
                 '''
             }
         }
 
-        stage('Restart Bench') {
+        stage('Deploy') {
             steps {
                 sh '''
+                echo "🚀 Deploying Frappe instance..."
                 export PATH=$HOME/.local/bin:$PATH
                 cd $BENCH_DIR
                 bench restart
                 '''
             }
         }
-
     }
 
     post {
@@ -152,3 +74,5 @@
         }
     }
 }
+
+               
