@@ -44,3 +44,18 @@ pipeline {
             steps {
                 sh '''
                 echo "🔁 Restarting Bench..."
+                sudo -u deepika bash -c "cd ${BENCH_DIR} && ${BENCH_CMD} restart"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment successful!"
+        }
+        failure {
+            echo "❌ Deployment failed. Check logs."
+        }
+    }
+}
