@@ -13,8 +13,7 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Pulling latest changes from Git..."
-                cd $BENCH_DIR/apps/$APP_NAME
-                git pull origin main || git pull origin master
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench/apps/deepika && git pull origin main || git pull origin master"
                 '''
             }
         }
@@ -23,9 +22,7 @@ pipeline {
             steps {
                 sh '''
                 echo "⚙️ Building assets and migrating database..."
-                cd $BENCH_DIR
-                bench build
-                bench --site $SITE_NAME migrate
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && bench build && bench --site test.localhost migrate"
                 '''
             }
         }
@@ -34,8 +31,7 @@ pipeline {
             steps {
                 sh '''
                 echo "🔁 Restarting Bench..."
-                cd $BENCH_DIR
-                bench restart
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && bench restart"
                 '''
             }
         }
