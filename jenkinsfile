@@ -18,24 +18,25 @@ pipeline {
     }
 }
 
+     stage('Build & Migrate') {
+    steps {
+        sh '''
+        echo "⚙️ Building assets and migrating database..."
+        sudo -u deepika bash -c "export PATH=$HOME/.local/bin:$PATH && cd /home/deepika/frappe-bench && bench build && bench --site test.localhost migrate"
+        '''
+    }
+}
 
-        stage('Build & Migrate') {
-            steps {
-                sh '''
-                echo "⚙️ Building assets and migrating database..."
-                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && bench build && bench --site test.localhost migrate"
-                '''
-            }
-        }
+     stage('Restart Bench') {
+    steps {
+        sh '''
+        echo "🔁 Restarting Bench..."
+        sudo -u deepika bash -c "export PATH=$HOME/.local/bin:$PATH && cd /home/deepika/frappe-bench && bench restart"
+        '''
+    }
+}
 
-        stage('Restart Bench') {
-            steps {
-                sh '''
-                echo "🔁 Restarting Bench..."
-                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && bench restart"
-                '''
-            }
-        }
+
     }
 
     post {
