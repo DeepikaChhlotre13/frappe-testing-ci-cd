@@ -4,39 +4,38 @@ pipeline {
     environment {
         BENCH_DIR = "/home/deepika/frappe-bench"
         APP_NAME = "deepika"
-        SITE_NAME = "test.localhost"   // replace if your site name is different
+        SITE_NAME = "test.localhost"
+        BENCH_CMD = "/home/deepika/.local/bin/bench"
     }
 
     stages {
 
-       stage('Pull Latest Code') {
-    steps {
-        sh '''
-        echo "🔄 Pulling latest changes from Git..."
-        sudo -u deepika bash -c "cd /home/deepika/frappe-bench/apps/deepika && git fetch origin && git reset --hard origin/main"
-        '''
-    }
-}
+        stage('Pull Latest Code') {
+            steps {
+                sh '''
+                echo "🔄 Pulling latest changes from Git..."
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench/apps/deepika && git fetch origin && git reset --hard origin/main"
+                '''
+            }
+        }
 
-     stage('Build & Migrate') {
-    steps {
-        sh '''
-        echo "⚙️ Building assets and migrating database..."
-        sudo -u deepika bash -c "export PATH=$HOME/.local/bin:$PATH && cd /home/deepika/frappe-bench && bench build && bench --site test.localhost migrate"
-        '''
-    }
-}
+        stage('Build & Migrate') {
+            steps {
+                sh '''
+                echo "⚙️ Building assets and migrating database..."
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && ${BENCH_CMD} build && ${BENCH_CMD} --site test.localhost migrate"
+                '''
+            }
+        }
 
-     stage('Restart Bench') {
-    steps {
-        sh '''
-        echo "🔁 Restarting Bench..."
-        sudo -u deepika bash -c "export PATH=$HOME/.local/bin:$PATH && cd /home/deepika/frappe-bench && bench restart"
-        '''
-    }
-}
-
-
+        stage('Restart Bench') {
+            steps {
+                sh '''
+                echo "🔁 Restarting Bench..."
+                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && ${BENCH_CMD} restart"
+                '''
+            }
+        }
     }
 
     post {
@@ -49,4 +48,4 @@ pipeline {
     }
 }
 
-               
+      
