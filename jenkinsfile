@@ -5,7 +5,7 @@ pipeline {
         BENCH_DIR = "/home/deepika/frappe-bench"
         SITE_NAME = "new.local"
         BENCH_CMD = "/home/deepika/.local/bin/bench"
-        PATH = "/usr/local/bin:${env.PATH}" // ensure yarn is available
+        PATH = "/usr/local/bin:${env.PATH}" // ensures yarn is found
     }
 
     stages {
@@ -14,10 +14,12 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Pulling latest changes from Git..."
-                # Pull frappe app
-                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/frappe && git fetch origin && git reset --hard origin/main"
-                # Pull erpnext app
-                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/erpnext && git fetch origin && git reset --hard origin/main"
+
+                # Pull frappe app (develop branch)
+                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/frappe && git fetch origin && git reset --hard origin/develop && git checkout -B develop origin/develop"
+
+                # Pull erpnext app (version-14 branch)
+                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/erpnext && git fetch origin && git reset --hard origin/version-14 && git checkout -B version-14 origin/version-14"
                 '''
             }
         }
