@@ -6,6 +6,7 @@ pipeline {
         APP_NAME = "deepika"
         SITE_NAME = "test.localhost"
         BENCH_CMD = "/home/deepika/.local/bin/bench"
+        PATH = "/usr/local/bin:${env.PATH}" // ensure yarn is available
     }
 
     stages {
@@ -14,7 +15,16 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Pulling latest changes from Git..."
-                sudo -u deepika bash -c "cd /home/deepika/frappe-bench/apps/deepika && git fetch origin && git reset --hard origin/main"
+                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/${APP_NAME} && git fetch origin && git reset --hard origin/main"
+                '''
+            }
+        }
+
+        stage('Clean Assets & Cache (Optional)') {
+            steps {
+                sh '''
+                echo "🧹 Cleaning old assets and cache..."
+                sudo -u deepika bash -c "cd ${BENCH_DIR} && ${BENCH_CMD} --site ${SITE_NAME} clear-cache && rm -rf sites/assets"
                 '''
             }
         }
@@ -23,7 +33,7 @@ pipeline {
             steps {
                 sh '''
                 echo "⚙️ Building assets and migrating database..."
-                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && ${BENCH_CMD} build && ${BENCH_CMD} --site test.localhost migrate"
+                sudo -u deepika bash -c "cd ${BENCH_DIR} && ${BENCH_CMD} build && ${BENCH_CMD} --site ${SITE_NAME} migrate"
                 '''
             }
         }
@@ -32,7 +42,7 @@ pipeline {
             steps {
                 sh '''
                 echo "🔁 Restarting Bench..."
-                sudo -u deepika bash -c "cd /home/deepika/frappe-bench && ${BENCH_CMD} restart"
+                sudo -u deepika bash -c "cd ${BENCH_DIR} && ${BENCH_CMD} restart"
                 '''
             }
         }
@@ -47,5 +57,3 @@ pipeline {
         }
     }
 }
-
-      
