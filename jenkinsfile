@@ -4,7 +4,7 @@ pipeline {
     environment {
         BENCH_DIR = "/home/deepika/frappe-bench"
         APP_NAME = "deepika"
-        SITE_NAME = "test.localhost"
+        SITE_NAME = "new.local"
         BENCH_CMD = "/home/deepika/.local/bin/bench"
         PATH = "/usr/local/bin:${env.PATH}" // ensure yarn is available
     }
