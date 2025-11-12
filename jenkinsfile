@@ -10,19 +10,19 @@ pipeline {
 
     stages {
 
-        stage('Pull Latest Code') {
-            steps {
-                sh '''
-                echo "🔄 Pulling latest changes from Git..."
+       stage('Pull Latest Code') {
+    steps {
+        sh '''
+        echo "🔄 Pulling latest changes from Git..."
 
-                # Pull frappe app (develop branch)
-                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/frappe && git fetch origin && git reset --hard origin/develop && git checkout -B develop origin/develop"
+        # Pull frappe app (develop branch)
+        sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/frappe && git fetch origin && git reset --hard origin/develop && git checkout -B develop origin/develop"
 
-                # Pull erpnext app (version-14 branch)
-                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/erpnext && git fetch origin && git reset --hard origin/version-14 && git checkout -B version-14 origin/version-14"
-                '''
-            }
-        }
+        # Pull erpnext app (version-14 branch)
+        sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/erpnext && git fetch upstream && git reset --hard upstream/version-14 && git checkout -B version-14 upstream/version-14"
+        '''
+    }
+}
 
         stage('Clean Assets & Cache (Optional)') {
             steps {
