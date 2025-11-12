@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         BENCH_DIR = "/home/deepika/frappe-bench"
-        APP_NAME = "deepika"
         SITE_NAME = "new.local"
         BENCH_CMD = "/home/deepika/.local/bin/bench"
         PATH = "/usr/local/bin:${env.PATH}" // ensure yarn is available
@@ -15,7 +14,10 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Pulling latest changes from Git..."
-                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/${APP_NAME} && git fetch origin && git reset --hard origin/main"
+                # Pull frappe app
+                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/frappe && git fetch origin && git reset --hard origin/main"
+                # Pull erpnext app
+                sudo -u deepika bash -c "cd ${BENCH_DIR}/apps/erpnext && git fetch origin && git reset --hard origin/main"
                 '''
             }
         }
@@ -42,18 +44,3 @@ pipeline {
             steps {
                 sh '''
                 echo "🔁 Restarting Bench..."
-                sudo -u deepika bash -c "cd ${BENCH_DIR} && ${BENCH_CMD} restart"
-                '''
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Deployment successful!"
-        }
-        failure {
-            echo "❌ Deployment failed. Check logs."
-        }
-    }
-}
