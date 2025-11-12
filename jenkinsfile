@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        BENCH_DIR = "/home/deepika/frappe-bench"  // Path to your existing bench
-        SITE_NAME = "test.localhost"              // Your existing site
-        PATH = "$HOME/.local/bin:$PATH"
+        BENCH_DIR = "/home/deepika/frappe-bench"
+        APP_NAME = "deepika"
+        SITE_NAME = "test.localhost"   // replace if your site name is different
     }
 
     stages {
@@ -13,7 +13,7 @@ pipeline {
             steps {
                 sh '''
                 echo "🔄 Pulling latest changes from Git..."
-                cd $BENCH_DIR/apps/your_app_name
+                cd $BENCH_DIR/apps/$APP_NAME
                 git pull origin main || git pull origin master
                 '''
             }
@@ -22,8 +22,7 @@ pipeline {
         stage('Build & Migrate') {
             steps {
                 sh '''
-                echo "⚙️ Building and migrating..."
-                export PATH=$HOME/.local/bin:$PATH
+                echo "⚙️ Building assets and migrating database..."
                 cd $BENCH_DIR
                 bench build
                 bench --site $SITE_NAME migrate
@@ -34,8 +33,7 @@ pipeline {
         stage('Restart Bench') {
             steps {
                 sh '''
-                echo "🚀 Restarting bench..."
-                export PATH=$HOME/.local/bin:$PATH
+                echo "🔁 Restarting Bench..."
                 cd $BENCH_DIR
                 bench restart
                 '''
@@ -45,10 +43,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo "✅ Deployment successful!"
         }
         failure {
-            echo '❌ Deployment failed! Check Jenkins logs.'
+            echo "❌ Deployment failed. Check logs."
         }
     }
 }
