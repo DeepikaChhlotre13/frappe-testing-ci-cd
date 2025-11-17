@@ -1,91 +1,65 @@
 pipeline {
-    agent any
-
-    environment {
-        BENCH_DIR = "/home/jenkins/frappe-bench"
-        SITE_NAME = "new.local"
-        PYTHON_PATH = "/usr/bin/python3.11" // update as per your server
-        BENCH_CMD = "/home/jenkins/.local/bin/bench"
-        PATH = "/usr/local/bin:${env.PATH}"
+  agent any
+  environment {
+    IMAGE = "yourdockerhubuser/frappe-deepika"
+    TAG = "${env.BUILD_NUMBER}"
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
 
-    stages {
-        stage('Clone Repository') {
-            steps {
-                echo "🔄 Cloning repository..."
-                git branch: 'develop', url: 'https://github.com/DeepikaChhlotre13/frappe-testing-ci-cd.git'
-            }
+    stage('Build Image') {
+      steps {
+        script {
+          sh "docker build -t ${IMAGE}:${TAG} ."
+          sh "docker tag ${IMAGE}:${TAG} ${IMAGE}:latest"
         }
-
-        stage('Initialize Bench') {
-            steps {
-                sh '''
-                echo "📦 Setting up Frappe bench..."
-                if [ ! -d "$BENCH_DIR" ]; then
-                    $PYTHON_PATH -m venv ~/frappe-env
-                    source ~/frappe-env/bin/activate
-                    pip install --upgrade pip
-                    pip install frappe-bench
-                    $BENCH_CMD init frappe-bench --frappe-branch develop --python $PYTHON_PATH
-                fi
-                '''
-            }
-        }
-
-        stage('Get Latest Code & Build') {
-            steps {
-                sh '''
-                echo "📂 Copying app to bench apps..."
-                cp -r $(pwd) $BENCH_DIR/apps/
-                
-                cd $BENCH_DIR
-                echo "🛠 Installing app..."
-                $BENCH_CMD get-app frappe $BENCH_DIR/apps/frappe
-                $BENCH_CMD --site $SITE_NAME install-app frappe
-                echo "🔧 Building assets..."
-                $BENCH_CMD build
-                '''
-            }
-        }
-
-        stage('Database Migration') {
-            steps {
-                sh '''
-                echo "🗄 Migrating database..."
-                cd $BENCH_DIR
-                $BENCH_CMD --site $SITE_NAME migrate
-                '''
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh '''
-                echo "✅ Running tests..."
-                cd $BENCH_DIR
-                $BENCH_CMD --site $SITE_NAME run-tests
-                '''
-            }
-        }
-
-        stage('Restart Bench') {
-            steps {
-                sh '''
-                echo "🔄 Restarting bench..."
-                cd $BENCH_DIR
-                $BENCH_CMD restart
-                '''
-            }
-        }
+      }
     }
 
-    post {
-        success {
-            echo "🎉 CI/CD pipeline executed successfully!"
+    stage('Login to Docker Hub') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          sh "echo $DH_PASS | docker login -u $DH_USER --password-stdin"
         }
-        failure {
-            echo "❌ Pipeline failed. Check logs."
-        }
+      }
     }
+
+    stage('Push Image') {
+      steps {
+        sh "docker push ${IMAGE}:${TAG}"
+        sh "docker push ${IMAGE}:latest"
+      }
+    }
+
+    stage('Deploy to target') {
+      steps {
+        // SSH into your WSL/Docker host and pull + restart
+        sshagent (credentials: ['wsl-ssh']) {
+          // Adjust host user@host and path
+          sh """
+            ssh -o StrictHostKeyChecking=no user@your-docker-host '
+              docker pull ${IMAGE}:latest &&
+              # if you use compose
+              cd /home/user/path-to-compose &&
+              docker-compose pull frappe || true &&
+              docker-compose up -d --no-deps --build frappe || \
+              (docker rm -f frappe || true; docker run -d --name frappe -p 8000:8000 ${IMAGE}:latest)
+            '
+          """
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo "Build and deploy succeeded." }
+    failure { echo "Something failed." }
+  }
 }
 
+
+        

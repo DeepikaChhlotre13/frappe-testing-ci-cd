@@ -1,0 +1,11 @@
+node_modules
+__pycache__
+env
+.venv
+*.pyc
+logs
+sites/*/private/files
+sites/*/public/files
+sites/assets
+*.log
+bench-repo

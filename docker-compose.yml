@@ -1,0 +1,30 @@
+version: '3.7'
+services:
+  db:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+
+  frappe:
+    image: yourdockerhubuser/frappe-deepika:latest
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+    environment:
+      SITE_NAME: mysite.local
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+
+volumes:
+  db_data:
+  redis_data:
+  sites:
