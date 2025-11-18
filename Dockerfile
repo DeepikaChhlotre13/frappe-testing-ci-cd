@@ -8,7 +8,7 @@ WORKDIR /home/frappe/frappe-bench
 COPY ./deepika /home/frappe/frappe-bench/apps/deepika
 
 # provide apps.json to install during build (optional)
-COPY ./apps.json /home/frappe/apps.json
+#COPY ./apps.json /home/frappe/apps.json
 
 # default command (production method depends on frappe_docker; for simple dev)
 CMD ["bench", "start"]
