@@ -1,5 +1,5 @@
 # Dockerfile (simple pattern that uses official frappe base)
-FROM frappe/bench:edge
+FROM frappe/bench:latest
 
 # create workdir
 WORKDIR /home/frappe/frappe-bench
