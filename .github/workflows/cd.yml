@@ -1,6 +1,6 @@
 name: Frappe CD - Deploy to Production
 
-# Trigger on push to main
+# Trigger on push to main or manual trigger
 on:
   push:
     branches:
@@ -8,24 +8,9 @@ on:
   workflow_dispatch:  # allows manual trigger too
 
 jobs:
-  approval:
-    name: Continuous Delivery Approval
-    runs-on: ubuntu-latest
-    outputs:
-      approved: ${{ steps.approval.outputs.approved }}
-    steps:
-      - name: Ask for approval
-        id: approval
-        uses: hmarr/auto-approve-action@v2
-        with:
-          # This is just a placeholder; we will use manual environment approval
-          # Real approval happens with GitHub environments (see below)
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
   deploy:
-    needs: approval
-    if: always()  # only run after approval
     runs-on: ubuntu-latest
+    environment: production  # This will pause deployment until approved in GitHub UI
 
     steps:
       - name: Checkout Repo
