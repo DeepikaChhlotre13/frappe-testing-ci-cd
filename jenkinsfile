@@ -1,0 +1,80 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Setup Bench Environment') {
+            steps {
+                sh '''
+                echo "Installing Frappe Bench..."
+                sudo apt update -y
+                sudo apt install -y python3-pip python3-venv nodejs npm redis-server mariadb-server xvfb libfontconfig wkhtmltopdf
+                pip install frappe-bench
+                bench --version
+                '''
+            }
+        }
+
+        stage('Initialize Bench') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}
+                if [ ! -d "frappe-bench" ]; then
+                    echo "Creating new frappe bench..."
+                    bench init frappe-bench --frappe-branch version-14 --python python3
+                else
+                    echo "Bench already exists."
+                fi
+                '''
+            }
+        }
+
+        stage('Copy App to Bench') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}/frappe-bench/apps
+                cp -r ${WORKSPACE}/your_app_name .
+                '''
+            }
+        }
+
+        stage('Setup Site and Install App') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}/frappe-bench
+                bench new-site test.localhost --mariadb-root-password root --admin-password admin
+                bench --site test.localhost install-app your_app_name
+                '''
+            }
+        }
+
+        stage('Build and Migrate') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}/frappe-bench
+                bench build
+                bench migrate
+                '''
+            }
+        }
+
+        stage('Restart Bench') {
+            steps {
+                sh '''
+                cd ${WORKSPACE}/frappe-bench
+                bench restart
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Build succeeded!'
+        }
+        failure {
+            echo '❌ Build failed! Check console logs for details.'
+        }
+    }
+}
+
+
